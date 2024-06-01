@@ -8,24 +8,25 @@ import (
 	"strings"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/pseudoelement/go-tg-music-bot/types"
 	"github.com/pseudoelement/go-tg-music-bot/utils"
 )
 
-type chatGPT struct {
+type ChatGPT struct {
 	client      *resty.Client
 	apiToken    string
 	apiEndpoint string
 	retryCount  int
 }
 
-func NewChatGPTModule() (*chatGPT, error) {
+func NewChatGPTService() (*ChatGPT, error) {
 	client := resty.New()
-	chat := &chatGPT{
+	chat := &ChatGPT{
 		client:      client,
 		apiEndpoint: "https://api.openai.com/v1/chat/completions",
 		retryCount:  0,
 	}
-	token, err := chat.getApiToken()
+	token, err := chat.GetApiToken()
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +35,7 @@ func NewChatGPTModule() (*chatGPT, error) {
 	return chat, nil
 }
 
-func (c *chatGPT) getApiToken() (string, error) {
+func (c *ChatGPT) GetApiToken() (string, error) {
 	token, ok := os.LookupEnv("CHAT_GPT_TOKEN")
 	if !ok {
 		return "", errors.New("CHAT_GPT_TOKEN doesn't exist!")
@@ -43,7 +44,7 @@ func (c *chatGPT) getApiToken() (string, error) {
 	return token, nil
 }
 
-func (c *chatGPT) formatMessageToChatGPT(msg string, isRetry bool) string {
+func (c *ChatGPT) formatMessageToChatGPT(msg string) string {
 	startPart := fmt.Sprintf("Give me ten similar songs on this one - %v", msg)
 	lastPart := `
         Give me the answer in such format: 
@@ -64,7 +65,7 @@ func (c *chatGPT) formatMessageToChatGPT(msg string, isRetry bool) string {
 	return msg
 }
 
-func (c *chatGPT) getSongsListFromResponse(data map[string]interface{}) (string, error) {
+func (c *ChatGPT) getSongsListFromResponse(data map[string]interface{}) (string, error) {
 	// Extract the content from the JSON response
 	content, ok := data["choices"].([]interface{})[0].(map[string]interface{})["message"].(map[string]interface{})["content"].(string)
 	if !ok {
@@ -83,10 +84,10 @@ func (c *chatGPT) getSongsListFromResponse(data map[string]interface{}) (string,
 	return list, nil
 }
 
-func (c *chatGPT) MakeQuery(msg string, isRetry bool) (string, error) {
+func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool) (string, error) {
 	c.retryCount++
 
-	msg = c.formatMessageToChatGPT(msg, isRetry)
+	msg = c.formatMessageToChatGPT(msg)
 	response, err := c.client.R().
 		SetAuthToken(c.apiToken).
 		SetHeader("Content-Type", "application/json").
@@ -112,7 +113,7 @@ func (c *chatGPT) MakeQuery(msg string, isRetry bool) (string, error) {
 	songsList, err := c.getSongsListFromResponse(data)
 	if err != nil {
 		if errors.Is(err, utils.InvalidAiResponseFormat()) && c.retryCount < 3 {
-			newResponse, err := c.MakeQuery(msg, true)
+			newResponse, err := c.QuerySimilarSongs(msg, true)
 			if err != nil {
 				return "", err
 			}
@@ -127,3 +128,5 @@ func (c *chatGPT) MakeQuery(msg string, isRetry bool) (string, error) {
 
 	return songsList, nil
 }
+
+var _ types.MusicApiService = (*ChatGPT)(nil)

@@ -1,14 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
-	"github.com/go-resty/resty/v2"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
+	"github.com/pseudoelement/go-tg-music-bot/ai"
+	shazam_api "github.com/pseudoelement/go-tg-music-bot/shazam-api"
 )
 
 func main() {
@@ -19,8 +20,10 @@ func main() {
 
 	token, ok := os.LookupEnv("BOT_TOKEN")
 	if !ok {
-		panic("BOT_TOKEN doesn't exists!")
+		panic("BOT_TOKEN doesn't exist!")
 	}
+
+	useChatGPT := needUseChatGPT()
 
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -28,76 +31,70 @@ func main() {
 	}
 
 	bot.Debug = true
-
 	fmt.Printf("Authorized on account %s!\n", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 100
-
 	updates := bot.GetUpdatesChan(u)
 
-	// chatGPT, err := ai.NewChatGPTModule()
-	// if err != nil {
-	// 	msg := "Error in ai.NewChatGPTModule() - " + err.Error()
-	// 	panic(msg)
-	// }
+	var chatGPT *ai.ChatGPT
+	if useChatGPT {
+		chatGPT, err = ai.NewChatGPTService()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	shazamApi, err := shazam_api.NewShazamApiService()
+	if err != nil {
+		panic(err)
+	}
 
 	for update := range updates {
 		if update.Message != nil {
 			fmt.Println("Name: ", update.Message.From.FirstName)
 			// fmt.Println("Video from TG: ", update.Message.Video)
 			// fmt.Println("Photo from TG: ", update.Message.Photo)
-
-			// response, err := chatGPT.MakeQuery(update.Message.Text, false)
-
-			// var msg tgbotapi.MessageConfig
-			// if err != nil {
-			// 	msg = tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
-			// } else {
-			// 	msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
-			// }
-
-			response := fakeRequest()
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
-
+			msg := handleQuery(update, shazamApi, chatGPT, useChatGPT)
 			msg.ReplyToMessageID = update.Message.MessageID
 			bot.Send(msg)
 		}
 	}
 }
 
-func fakeRequest() string {
-	apiKey := os.Getenv("CHAT_GPT_TOKEN")
-	client := resty.New()
-
-	response, err := client.R().
-		SetAuthToken(apiKey).
-		SetHeader("Content-Type", "application/json").
-		SetBody(map[string]interface{}{
-			"model":      "gpt-3.5-turbo",
-			"messages":   []interface{}{map[string]interface{}{"role": "system", "content": "Hi can you tell me what is the factorial of 10?"}},
-			"max_tokens": 50,
-		}).
-		Post("https://api.openai.com/v1/chat/completions")
-	fmt.Println("AFTER REQUEST  ========")
-
-	if err != nil {
-		log.Fatalf("Error while sending send the request: %v", err)
+func needUseChatGPT() bool {
+	useAiEnv := os.Getenv("USE_AI")
+	var useChatGPT bool
+	if len(useAiEnv) == 0 {
+		useChatGPT = false
+	} else {
+		boolean, err := strconv.ParseBool(useAiEnv)
+		if err != nil {
+			fmt.Println("Incorrect format of .env var USE_AI!")
+			useChatGPT = false
+		}
+		useChatGPT = boolean
 	}
 
-	body := response.Body()
-	fmt.Println("BODY ====> ", body)
+	return useChatGPT
+}
 
-	var data map[string]interface{}
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		fmt.Println("Error while decoding JSON response:", err)
-		return ""
+func handleQuery(update tgbotapi.Update, shazamApi *shazam_api.ShazamApiService, chatGPT *ai.ChatGPT, useChatGPT bool) tgbotapi.MessageConfig {
+	var msg tgbotapi.MessageConfig
+	var response string
+	var err error
+	if useChatGPT {
+		response, err = chatGPT.QuerySimilarSongs(update.Message.Text, false)
+	} else {
+		response, err = shazamApi.QuerySimilarSongs(update.Message.Text, false)
 	}
 
-	fmt.Println("DATA ß=======> ", data)
-	// Extract the content from the JSON response
-	content := data["choices"].([]interface{})[0].(map[string]interface{})["message"].(map[string]interface{})["content"].(string)
-	fmt.Println(content)
-	return content
+	if err != nil {
+		errorMsg := fmt.Sprintf("Некорректный запрос, попробуй еще раз! Текст ошибки(для разработчика): %s", err.Error())
+		msg = tgbotapi.NewMessage(update.Message.Chat.ID, errorMsg)
+	} else {
+		msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
+	}
+
+	return msg
 }
