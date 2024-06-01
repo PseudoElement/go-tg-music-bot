@@ -1,6 +1,7 @@
 package shazam_api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -8,16 +9,19 @@ import (
 	"os"
 
 	"github.com/pseudoelement/go-tg-music-bot/types"
+	"github.com/pseudoelement/go-tg-music-bot/utils"
 )
 
 type ShazamApiService struct {
 	apiToken    string
+	apiHost     string
 	apiEndpoint string
 }
 
 func NewShazamApiService() (*ShazamApiService, error) {
 	chat := &ShazamApiService{
 		apiEndpoint: "https://shazam.p.rapidapi.com",
+		apiHost:     "shazam.p.rapidapi.com",
 	}
 	token, err := chat.GetApiToken()
 	if err != nil {
@@ -26,6 +30,40 @@ func NewShazamApiService() (*ShazamApiService, error) {
 	chat.apiToken = token
 
 	return chat, nil
+}
+
+func (srv *ShazamApiService) makeGetRequest(subUrl string, params map[string]string) ([]byte, error) {
+	url := fmt.Sprintf("%s/%s", srv.apiEndpoint, subUrl)
+	req, _ := http.NewRequest("GET", url, nil)
+
+	queryParams := req.URL.Query()
+	for key, value := range params {
+		queryParams.Add(key, value)
+	}
+	req.URL.RawQuery = queryParams.Encode()
+
+	req.Header.Add("X-RapidAPI-Key", srv.apiToken)
+	req.Header.Add("X-RapidAPI-Host", "shazam.p.rapidapi.com")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+
+	return body, nil
+}
+
+func (srv *ShazamApiService) querySongId(songName string) (string, error) {
+	p := map[string]string{"term": songName}
+	resBytes, err := srv.makeGetRequest("search", p)
+	var searchResponse SearchQueryResponse
+	if err = json.Unmarshal(resBytes, &searchResponse); err != nil {
+		return "", utils.Error(err.Error(), "querySongShazamId")
+	}
+
+	return searchResponse.Tracks.Hits[0].Track.Key, nil
 }
 
 func (srv *ShazamApiService) GetApiToken() (string, error) {
@@ -37,22 +75,29 @@ func (srv *ShazamApiService) GetApiToken() (string, error) {
 	return token, nil
 }
 
-func (srv *ShazamApiService) QuerySimilarSongs(text string, isRetry bool) (string, error) {
-	url := "https://shazam.p.rapidapi.com/shazam-songs/list-similarities?id=track-similarities-id-66398418&locale=en-US"
+func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool) (string, error) {
+	songId, err := srv.querySongId(songName)
+	if err != nil {
+		return "", utils.Error(err.Error(), "QuerySimilarSongs")
+	}
 
-	req, _ := http.NewRequest("GET", url, nil)
+	validSongId := fmt.Sprintf("track-similarities-id-%s", songId)
+	p := map[string]string{"id": validSongId}
+	resBytes, err := srv.makeGetRequest("shazam-songs/list-similarities", p)
+	var similaritiesResponse ListSimilaritiesResponse
+	if err = json.Unmarshal(resBytes, &similaritiesResponse); err != nil {
+		return "", utils.Error(err.Error(), "QuerySimilarSongs")
+	}
 
-	req.Header.Add("X-RapidAPI-Key", "c6a8fab7c8msh048c4df1ac026bep1830fcjsn9ac136edb848")
-	req.Header.Add("X-RapidAPI-Host", "shazam.p.rapidapi.com")
+	var list string
+	var count int
+	for _, value := range similaritiesResponse.Resources.ShazamSongs {
+		count++
+		str := fmt.Sprintf("%v. %s - %s\n", count, value.Attributes.Artist, value.Attributes.Title)
+		list += str
+	}
 
-	res, _ := http.DefaultClient.Do(req)
-
-	defer res.Body.Close()
-	body, _ := io.ReadAll(res.Body)
-
-	fmt.Println(string(body))
-
-	return string(body), nil
+	return list, nil
 }
 
 var _ types.MusicApiService = (*ShazamApiService)(nil)
