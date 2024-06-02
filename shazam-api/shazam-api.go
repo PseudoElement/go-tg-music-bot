@@ -100,4 +100,8 @@ func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool) (s
 	return list, nil
 }
 
+func (srv *ShazamApiService) QuerySongByKeyWords() (string, error) {
+	return "", utils.MethodNotImplemented()
+}
+
 var _ types.MusicApiService = (*ShazamApiService)(nil)

@@ -9,6 +9,10 @@ func Error(msg string, funcName string) error {
 	return errors.New(fmt.Sprintf("Error in %v: %v", funcName, msg))
 }
 
+func MethodNotImplemented() error {
+	return errors.New("Method is not implemented!")
+}
+
 func UnmarshalError(msg string, funcName string) error {
 	return errors.New(fmt.Sprintf("Unmarshal error in %v: %v", funcName, msg))
 }
