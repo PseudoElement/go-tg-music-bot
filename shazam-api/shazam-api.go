@@ -100,8 +100,23 @@ func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool) (s
 	return list, nil
 }
 
-func (srv *ShazamApiService) QuerySongByKeyWords() (string, error) {
-	return "", utils.MethodNotImplemented()
+func (srv *ShazamApiService) QuerySongByKeyWords(keyWord string) (string, error) {
+	p := map[string]string{"term": keyWord}
+	resBytes, err := srv.makeGetRequest("search", p)
+	var searchResponse SearchQueryResponse
+	if err = json.Unmarshal(resBytes, &searchResponse); err != nil {
+		return "", utils.Error(err.Error(), "querySongShazamId")
+	}
+
+	var list string
+	var count int
+	for _, value := range searchResponse.Tracks.Hits {
+		count++
+		str := fmt.Sprintf("%v. %s - %s\n", count, value.Track.Subtitle, value.Track.Title)
+		list += str
+	}
+
+	return list, nil
 }
 
 var _ types.MusicApiService = (*ShazamApiService)(nil)

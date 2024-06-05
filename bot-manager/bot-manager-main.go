@@ -5,21 +5,20 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pseudoelement/go-tg-music-bot/ai"
 	shazam_api "github.com/pseudoelement/go-tg-music-bot/shazam-api"
 	"github.com/pseudoelement/go-tg-music-bot/types"
-	"github.com/pseudoelement/go-tg-music-bot/utils"
 )
 
 type BotManager struct {
-	bot              *tgbotapi.BotAPI
-	updates          tgbotapi.UpdatesChannel
-	musicApiServices map[string]types.MusicApiService
-	useChatGPT       bool
-	clients          map[int64]*BotClient
+	bot     *tgbotapi.BotAPI
+	updates tgbotapi.UpdatesChannel
+	//SHAZAM_API_SERVICE or CHAT_GPT_SERVICE
+	activeMusicService string
+	musicApiServices   map[string]types.MusicApiService
+	clients            map[int64]*BotClient
 }
 
 func NewBotManager() *BotManager {
@@ -39,7 +38,7 @@ func (bm *BotManager) init() {
 	}
 
 	useChatGPT := bm.needUseChatGPT()
-	bm.useChatGPT = useChatGPT
+	bm.selectMusicService(useChatGPT)
 
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -89,6 +88,14 @@ func (bm *BotManager) needUseChatGPT() bool {
 	}
 
 	return useChatGPT
+}
+
+func (bm *BotManager) selectMusicService(useChatGPT bool) {
+	if useChatGPT {
+		bm.activeMusicService = CHAT_GPT_SERVICE
+	} else {
+		bm.activeMusicService = SHAZAM_API_SERVICE
+	}
 }
 
 func (bm *BotManager) Broadcast() {
@@ -165,20 +172,15 @@ func (bm *BotManager) handleQuery(update tgbotapi.Update, actionType string) tgb
 	var response string
 	var err error
 	if actionType == FIND_SIMILAR_SONGS {
-		if bm.useChatGPT {
-			response, err = bm.musicApiServices[CHAT_GPT_SERVICE].QuerySimilarSongs(update.Message.Text, false)
-		} else {
-			response, err = bm.musicApiServices[SHAZAM_API_SERVICE].QuerySimilarSongs(update.Message.Text, false)
-		}
+		response, err = bm.musicApiServices[bm.activeMusicService].QuerySimilarSongs(update.Message.Text, false)
+		response = "Вот подборка из 20 похожих песен: \n" + response
 	} else if actionType == FIND_SONG_BY_KEYWORDS {
-		err = utils.MethodNotImplemented()
+		response, err = bm.musicApiServices[bm.activeMusicService].QuerySongByKeyWords(update.Message.Text)
+		response = "Наиболее вероятные совпадения по запросу: \n" + response
 	}
 
 	if err != nil {
-		errorMsg := fmt.Sprintf("Некорректный запрос, попробуй еще раз! Текст ошибки(для разработчика): %s", err.Error())
-		if strings.HasPrefix(err.Error(), utils.MethodNotImplemented().Error()) {
-			errorMsg = "На данный момент опция `Найти песню по ключевым слова` не добавлена в приложение Musician-bot! Но скоро все будет :)"
-		}
+		errorMsg := fmt.Sprintf("Произошла ошибка, попробуй еще раз! Текст ошибки(для разработчика): %s", err.Error())
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, errorMsg)
 	} else {
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)

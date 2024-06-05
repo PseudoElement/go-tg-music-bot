@@ -129,7 +129,7 @@ func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool) (string, error) {
 	return songsList, nil
 }
 
-func (srv *ChatGPT) QuerySongByKeyWords() (string, error) {
+func (srv *ChatGPT) QuerySongByKeyWords(msg string) (string, error) {
 	return "", utils.MethodNotImplemented()
 }
 
