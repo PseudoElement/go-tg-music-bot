@@ -84,7 +84,7 @@ func (c *ChatGPT) getSongsListFromResponse(data map[string]interface{}) (string,
 	return list, nil
 }
 
-func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool) (string, error) {
+func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool, needLinks bool) (string, error) {
 	c.retryCount++
 
 	msg = c.formatMessageToChatGPT(msg)
@@ -113,7 +113,7 @@ func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool) (string, error) {
 	songsList, err := c.getSongsListFromResponse(data)
 	if err != nil {
 		if errors.Is(err, utils.InvalidAiResponseFormat()) && c.retryCount < 3 {
-			newResponse, err := c.QuerySimilarSongs(msg, true)
+			newResponse, err := c.QuerySimilarSongs(msg, true, needLinks)
 			if err != nil {
 				return "", err
 			}
@@ -129,7 +129,7 @@ func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool) (string, error) {
 	return songsList, nil
 }
 
-func (srv *ChatGPT) QuerySongByKeyWords(msg string) (string, error) {
+func (srv *ChatGPT) QuerySongByKeyWords(msg string, needLinks bool) (string, error) {
 	return "", utils.MethodNotImplemented()
 }
 

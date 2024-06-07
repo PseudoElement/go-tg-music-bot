@@ -6,6 +6,6 @@ type MusiApiFields struct {
 
 type MusicApiService interface {
 	GetApiToken() (string, error)
-	QuerySimilarSongs(msg string, isRetry bool) (string, error)
-	QuerySongByKeyWords(msg string) (string, error)
+	QuerySimilarSongs(msg string, isRetry bool, needLinks bool) (string, error)
+	QuerySongByKeyWords(msg string, needLinks bool) (string, error)
 }

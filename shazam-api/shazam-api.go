@@ -75,7 +75,7 @@ func (srv *ShazamApiService) GetApiToken() (string, error) {
 	return token, nil
 }
 
-func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool) (string, error) {
+func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool, needLinks bool) (string, error) {
 	songId, err := srv.querySongId(songName)
 	if err != nil {
 		return "", utils.Error(err.Error(), "QuerySimilarSongs")
@@ -100,7 +100,7 @@ func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool) (s
 	return list, nil
 }
 
-func (srv *ShazamApiService) QuerySongByKeyWords(keyWord string) (string, error) {
+func (srv *ShazamApiService) QuerySongByKeyWords(keyWord string, needLinks bool) (string, error) {
 	p := map[string]string{"term": keyWord}
 	resBytes, err := srv.makeGetRequest("search", p)
 	var searchResponse SearchQueryResponse

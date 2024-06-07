@@ -10,6 +10,7 @@ import (
 	"github.com/pseudoelement/go-tg-music-bot/ai"
 	shazam_api "github.com/pseudoelement/go-tg-music-bot/shazam-api"
 	"github.com/pseudoelement/go-tg-music-bot/types"
+	"github.com/pseudoelement/go-tg-music-bot/utils"
 )
 
 type BotManager struct {
@@ -115,18 +116,18 @@ func (bm *BotManager) Broadcast() {
 			if bm.isKeyboardCommand(update.Message.Text) {
 				msg = bm.handleKeyboardCommand(update)
 			} else {
-				actionType := bm.clients[userId].ActionType
-				msg = bm.handleQuery(update, actionType)
+				user := bm.clients[userId]
+				msg = bm.handleQuery(update, user)
+				msg.ReplyMarkup = MAIN_OPTIONS_KEYBOARD
 			}
 			msg.ReplyToMessageID = update.Message.MessageID
-			msg.ReplyMarkup = botKeys
 			bm.Bot().Send(msg)
 		}
 	}
 }
 
 func (bm *BotManager) isKeyboardCommand(text string) bool {
-	return keyboardCommandsRusToEng[text] == FIND_SIMILAR_SONGS || keyboardCommandsRusToEng[text] == FIND_SONG_BY_KEYWORDS
+	return utils.Includes(COMMANDS_LIST, COMMANDS_RUS_TO_ENG[text])
 }
 
 func (bm *BotManager) sendGreetingMessage(update tgbotapi.Update, userId int64) {
@@ -137,7 +138,7 @@ func (bm *BotManager) sendGreetingMessage(update tgbotapi.Update, userId int64) 
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
 	bm.clients[userId].IsFirstLoad = false
 	msg.ReplyToMessageID = update.Message.MessageID
-	msg.ReplyMarkup = botKeys
+	msg.ReplyMarkup = MAIN_OPTIONS_KEYBOARD
 	bm.Bot().Send(msg)
 }
 
@@ -146,7 +147,8 @@ func (bm *BotManager) handleClientsConfig(userId int64, userName string) {
 	if !ok {
 		bm.clients[userId] = &BotClient{
 			IsFirstLoad: true,
-			ActionType:  FIND_SIMILAR_SONGS,
+			NeedLinks:   false,
+			QueryType:   FIND_SIMILAR_SONGS,
 			UserName:    userName,
 		}
 	}
@@ -154,28 +156,48 @@ func (bm *BotManager) handleClientsConfig(userId int64, userName string) {
 
 func (bm *BotManager) handleKeyboardCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
 	var msg tgbotapi.MessageConfig
-	switch keyboardCommandsRusToEng[update.Message.Text] {
+	switch COMMANDS_RUS_TO_ENG[update.Message.Text] {
 	case FIND_SIMILAR_SONGS:
-		msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Введите название песни")
-		bm.clients[update.Message.From.ID].ActionType = FIND_SIMILAR_SONGS
+		text := RESPONSE_MESSAGES_ON_COMMAND[FIND_SIMILAR_SONGS]
+		keyboard := KEYBOARDS_ON_COMMAND[FIND_SIMILAR_SONGS]
+		bm.clients[update.Message.From.ID].QueryType = FIND_SIMILAR_SONGS
+		msg = tgbotapi.NewMessage(update.Message.Chat.ID, text)
+		msg.ReplyMarkup = keyboard
 	case FIND_SONG_BY_KEYWORDS:
-		msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Введите ключевые слова из песни(отрывок из текста, часть названия и т.д.)")
-		bm.clients[update.Message.From.ID].ActionType = FIND_SONG_BY_KEYWORDS
+		text := RESPONSE_MESSAGES_ON_COMMAND[FIND_SONG_BY_KEYWORDS]
+		keyboard := KEYBOARDS_ON_COMMAND[FIND_SONG_BY_KEYWORDS]
+		bm.clients[update.Message.From.ID].QueryType = FIND_SONG_BY_KEYWORDS
+		msg = tgbotapi.NewMessage(update.Message.Chat.ID, text)
+		msg.ReplyMarkup = keyboard
+	case SEND_LIST_WITH_LINKS:
+		mainCommandSelected := bm.clients[update.Message.From.ID].QueryType
+		text := RESPONSE_MESSAGES_ON_COMMAND[mainCommandSelected]
+		bm.clients[update.Message.From.ID].NeedLinks = true
+		keyboard := KEYBOARDS_ON_COMMAND[SEND_LIST_WITH_LINKS]
+		msg = tgbotapi.NewMessage(update.Message.Chat.ID, text)
+		msg.ReplyMarkup = keyboard
+	case SEND_TEXT_LIST:
+		mainCommandSelected := bm.clients[update.Message.From.ID].QueryType
+		text := RESPONSE_MESSAGES_ON_COMMAND[mainCommandSelected]
+		bm.clients[update.Message.From.ID].NeedLinks = false
+		keyboard := KEYBOARDS_ON_COMMAND[SEND_LIST_WITH_LINKS]
+		msg = tgbotapi.NewMessage(update.Message.Chat.ID, text)
+		msg.ReplyMarkup = keyboard
 	default:
 		fmt.Println("Keyboard command not found!")
 	}
 	return msg
 }
 
-func (bm *BotManager) handleQuery(update tgbotapi.Update, actionType string) tgbotapi.MessageConfig {
+func (bm *BotManager) handleQuery(update tgbotapi.Update, user *BotClient) tgbotapi.MessageConfig {
 	var msg tgbotapi.MessageConfig
 	var response string
 	var err error
-	if actionType == FIND_SIMILAR_SONGS {
-		response, err = bm.musicApiServices[bm.activeMusicService].QuerySimilarSongs(update.Message.Text, false)
+	if user.QueryType == FIND_SIMILAR_SONGS {
+		response, err = bm.musicApiServices[bm.activeMusicService].QuerySimilarSongs(update.Message.Text, false, user.NeedLinks)
 		response = "Вот подборка из 20 похожих песен: \n" + response
-	} else if actionType == FIND_SONG_BY_KEYWORDS {
-		response, err = bm.musicApiServices[bm.activeMusicService].QuerySongByKeyWords(update.Message.Text)
+	} else if user.QueryType == FIND_SONG_BY_KEYWORDS {
+		response, err = bm.musicApiServices[bm.activeMusicService].QuerySongByKeyWords(update.Message.Text, user.NeedLinks)
 		response = "Наиболее вероятные совпадения по запросу: \n" + response
 	}
 
