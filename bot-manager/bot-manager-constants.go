@@ -50,6 +50,7 @@ var RESPONSE_MESSAGES_ON_COMMAND = map[string]string{
 	FIND_SIMILAR_SONGS:    "Введи название песни",
 	FIND_SONG_BY_KEYWORDS: "Введи ключевые слова из песни(отрывок из текста, часть названия и т.д.)",
 	SEND_LIST_WITH_LINKS:  "Какой список тебе отправить?",
+	SEND_TEXT_LIST:        "Какой список тебе отправить?",
 }
 
 var KEYBOARDS_ON_COMMAND = map[string]tgbotapi.ReplyKeyboardMarkup{

@@ -4,6 +4,7 @@ type BotClient struct {
 	IsFirstLoad bool
 	//"FIND_SIMILAR_SONGS" or "FIND_SONG_BY_KEYWORDS"
 	QueryType string
-	NeedLinks bool
-	UserName  string
+	//"SEND_LIST_WITH_LINKS" or "SEND_TEXT_LIST"
+	ResponseViewType string
+	UserName         string
 }
