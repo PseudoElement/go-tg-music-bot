@@ -48,7 +48,6 @@ func (srv *ShazamApiService) querySongInfo(songName string) (SearchQueryResponse
 
 func (srv *ShazamApiService) querySimilarityList(songName string) (ListSimilaritiesResponse, error) {
 	songInfo, err := srv.querySongInfo(songName)
-	fmt.Println("SONG_INFGO ============> ", songInfo.Tracks.Hits)
 	if err != nil || len(songInfo.Tracks.Hits) < 1 {
 		return ListSimilaritiesResponse{}, utils.Error(err.Error(), "QuerySimilarSongs")
 	}
@@ -78,6 +77,8 @@ func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool) (s
 	similaritiesResponse, err := srv.querySimilarityList(songName)
 	if err != nil {
 		return "", utils.Error(err.Error(), "QuerySimilarSongs")
+	} else if len(similaritiesResponse.Resources.ShazamSongs) < 1 {
+		return "", errors.New("Похожие песни по запросу не найдены. Уточни название песни.")
 	}
 
 	var list string
@@ -178,7 +179,7 @@ func (srv *ShazamApiService) QuerySongByKeyWordsLinks(msg string) (string, error
 func (srv *ShazamApiService) getListRow(song string) string {
 	link, err := srv.youTubeApi.QueryLinkByVideoName(song)
 	if link == "" || err != nil {
-		link = "Ссылка на песню не найдена."
+		link = "Ссылка не найдена."
 	}
 	songRow := fmt.Sprintf(`Название -  %s.
 	Ссылка на youtube - %v`, song, link)

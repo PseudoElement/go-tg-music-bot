@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -29,6 +30,7 @@ func Get[T any](url string, params map[string]string, headers map[string]string)
 	}
 
 	resBytes, _ := io.ReadAll(res.Body)
+	fmt.Println("\nGET_RESPONSE_STRING ============> ", string(resBytes))
 	res_struct := new(T)
 	if err := json.Unmarshal(resBytes, &res_struct); err != nil {
 		return *res_struct, err

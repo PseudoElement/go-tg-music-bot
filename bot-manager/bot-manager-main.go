@@ -107,6 +107,7 @@ func (bm *BotManager) Broadcast() {
 		userName := update.Message.From.UserName
 		bm.handleClientsConfig(userId, userName)
 		isNewUser := bm.clients[userId].IsFirstLoad
+		isCommandRequired := bm.clients[userId].Stage != STAGE_SONG_NAME_INPUT
 		if update.Message != nil {
 			if isNewUser {
 				bm.sendGreetingMessage(update, userId)
@@ -115,10 +116,11 @@ func (bm *BotManager) Broadcast() {
 			var msg tgbotapi.MessageConfig
 			if bm.isKeyboardCommand(update.Message.Text) {
 				msg = bm.handleKeyboardCommand(update)
+			} else if isCommandRequired {
+				msg = bm.handleCommandRequiredWarning(update)
 			} else {
 				user := bm.clients[userId]
 				msg = bm.handleQuery(update, user)
-				msg.ReplyMarkup = MAIN_OPTIONS_KEYBOARD
 			}
 			msg.ReplyToMessageID = update.Message.MessageID
 			bm.Bot().Send(msg)
@@ -150,8 +152,14 @@ func (bm *BotManager) handleClientsConfig(userId int64, userName string) {
 			QueryType:        FIND_SIMILAR_SONGS,
 			ResponseViewType: SEND_TEXT_LIST,
 			UserName:         userName,
+			Stage:            STAGE_QUERY_TYPE_SELECTION,
 		}
 	}
+}
+
+func (bm *BotManager) handleCommandRequiredWarning(update tgbotapi.Update) tgbotapi.MessageConfig {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Необходимо выбрать одну из доступных команд!")
+	return msg
 }
 
 func (bm *BotManager) handleKeyboardCommand(update tgbotapi.Update) tgbotapi.MessageConfig {
@@ -161,29 +169,31 @@ func (bm *BotManager) handleKeyboardCommand(update tgbotapi.Update) tgbotapi.Mes
 		text := RESPONSE_MESSAGES_ON_COMMAND[SEND_LIST_WITH_LINKS]
 		keyboard := KEYBOARDS_ON_COMMAND[FIND_SIMILAR_SONGS]
 		bm.clients[update.Message.From.ID].QueryType = FIND_SIMILAR_SONGS
+		bm.clients[update.Message.From.ID].Stage = STAGE_LIST_TYPE_SELECTION
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, text)
 		msg.ReplyMarkup = keyboard
 	case FIND_SONG_BY_KEYWORDS:
 		text := RESPONSE_MESSAGES_ON_COMMAND[SEND_LIST_WITH_LINKS]
 		keyboard := KEYBOARDS_ON_COMMAND[FIND_SONG_BY_KEYWORDS]
 		bm.clients[update.Message.From.ID].QueryType = FIND_SONG_BY_KEYWORDS
+		bm.clients[update.Message.From.ID].Stage = STAGE_LIST_TYPE_SELECTION
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, text)
 		msg.ReplyMarkup = keyboard
 	case SEND_LIST_WITH_LINKS:
 		queryTypeSelected := bm.clients[update.Message.From.ID].QueryType
 		text := RESPONSE_MESSAGES_ON_COMMAND[queryTypeSelected]
-		fmt.Println("TEXT ======>", text)
 		bm.clients[update.Message.From.ID].ResponseViewType = SEND_LIST_WITH_LINKS
-		// keyboard := KEYBOARDS_ON_COMMAND[SEND_LIST_WITH_LINKS]
+		bm.clients[update.Message.From.ID].Stage = STAGE_SONG_NAME_INPUT
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, text)
+		// msg.ReplyMarkup = ""
 		// msg.ReplyMarkup = keyboard
 	case SEND_TEXT_LIST:
 		queryTypeSelected := bm.clients[update.Message.From.ID].QueryType
 		text := RESPONSE_MESSAGES_ON_COMMAND[queryTypeSelected]
-		fmt.Println("TEXT ======>", text)
 		bm.clients[update.Message.From.ID].ResponseViewType = SEND_TEXT_LIST
-		// keyboard := KEYBOARDS_ON_COMMAND[SEND_LIST_WITH_LINKS]
+		bm.clients[update.Message.From.ID].Stage = STAGE_SONG_NAME_INPUT
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, text)
+		// msg.ReplyMarkup = ""
 		// msg.ReplyMarkup = keyboard
 	default:
 		fmt.Println("Keyboard command not found!")
@@ -199,6 +209,7 @@ func (bm *BotManager) handleQuery(update tgbotapi.Update, user *BotClient) tgbot
 		switch user.ResponseViewType {
 		case SEND_TEXT_LIST:
 			response, err = bm.musicApiServices[bm.activeMusicService].QuerySimilarSongs(update.Message.Text, false)
+			fmt.Println("\nSEND_TEXT_LIST====> ", response)
 		case SEND_LIST_WITH_LINKS:
 			response, err = bm.musicApiServices[bm.activeMusicService].QuerySimilarSongsLinks(update.Message.Text)
 		}
@@ -220,5 +231,6 @@ func (bm *BotManager) handleQuery(update tgbotapi.Update, user *BotClient) tgbot
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
 	}
 
+	msg.ReplyMarkup = MAIN_OPTIONS_KEYBOARD
 	return msg
 }
