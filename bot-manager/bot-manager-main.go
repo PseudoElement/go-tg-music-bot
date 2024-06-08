@@ -226,6 +226,9 @@ func (bm *BotManager) handleQuery(update tgbotapi.Update, user *BotClient) tgbot
 
 	if err != nil {
 		errorMsg := fmt.Sprintf("Произошла ошибка, попробуй еще раз! Текст ошибки(для разработчика): %s", err.Error())
+		if utils.IndexOfSubstring(err.Error(), utils.SimilarSongsNotFound().Error()) != -1 {
+			errorMsg = err.Error()
+		}
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, errorMsg)
 	} else {
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)

@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/pseudoelement/go-tg-music-bot/utils"
 )
 
 func Get[T any](url string, params map[string]string, headers map[string]string) (response T, e error) {
@@ -31,9 +33,12 @@ func Get[T any](url string, params map[string]string, headers map[string]string)
 
 	resBytes, _ := io.ReadAll(res.Body)
 	fmt.Println("\nGET_RESPONSE_STRING ============> ", string(resBytes))
+
 	res_struct := new(T)
 	if err := json.Unmarshal(resBytes, &res_struct); err != nil {
 		return *res_struct, err
+	} else if string(resBytes) == "{}" {
+		return *res_struct, utils.EmptyApiResponse()
 	}
 
 	defer res.Body.Close()

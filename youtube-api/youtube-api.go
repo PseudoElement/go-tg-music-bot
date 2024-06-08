@@ -1,55 +1,53 @@
 package youtube_api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 
-	"github.com/pseudoelement/go-tg-music-bot/api"
+	"google.golang.org/api/option"
+	"google.golang.org/api/youtube/v3"
 )
 
 type YouTubeApi struct {
-	apiToken       string
-	apiBearerToken string
-	apiEndpoint    string
+	apiToken   string
+	youtubeSrv *youtube.Service
 }
 
 func NewYouTubeApi() *YouTubeApi {
 	api := &YouTubeApi{}
-	token, bearer, err := api.GetApiTokens()
+	token, err := api.GetApiTokens()
 	if err != nil {
 		panic(err)
 	}
 	api.apiToken = token
-	api.apiBearerToken = bearer
+
+	yts, err := youtube.NewService(context.Background(), option.WithAPIKey(token))
+	if err != nil {
+		panic(err)
+	}
+	api.youtubeSrv = yts
 
 	return api
 }
 
-func (srv *YouTubeApi) GetApiTokens() (string, string, error) {
+func (srv *YouTubeApi) GetApiTokens() (string, error) {
 	token, ok := os.LookupEnv("YOUTUBE_API_KEY")
 	if !ok {
-		return "", "", errors.New("YOUTUBE_API_KEY doesn't exist!")
+		return "", errors.New("YOUTUBE_API_KEY doesn't exist!")
 	}
 
-	bearer, ok := os.LookupEnv("YOUTUBE_BEARER_TOKEN")
-	if !ok {
-		return "", "", errors.New("YOUTUBE_BEARER_TOKEN doesn't exist!")
-	}
-
-	return token, bearer, nil
+	return token, nil
 }
 
-// @TODO fix link search
 func (srv *YouTubeApi) QueryLinkByVideoName(videoName string) (string, error) {
-	p := map[string]string{"part": "snippet", "type": "video", "key": srv.apiToken, "q": videoName}
-	h := map[string]string{"Authorization": fmt.Sprintf("Bearer %s", srv.apiBearerToken)}
-	res, err := api.Get[YuoTubeSearchResponse]("https://youtube.googleapis.com/youtube/v3/search", p, h)
-	if err != nil || len(res.Items) < 1 {
-		msg := fmt.Sprintf("Video `%s` not found", videoName)
-		return "", errors.New(msg)
+	call := srv.youtubeSrv.Search.List([]string{"snippet"})
+	searchList, err := call.MaxResults(5).Type("video").Q(videoName).Do()
+	if err != nil || len(searchList.Items) < 1 {
+		return "", errors.New("Video not found")
 	}
-	videoId := res.Items[0].Id.VideoId
+	videoId := searchList.Items[0].Id.VideoId
 	videoUrl := fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoId)
 
 	return videoUrl, nil
