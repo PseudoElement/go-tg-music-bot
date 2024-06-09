@@ -84,6 +84,9 @@ func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool) (s
 	var list string
 	var count int
 	for _, value := range similaritiesResponse.Resources.ShazamSongs {
+		if count > 9 {
+			break
+		}
 		count++
 		str := fmt.Sprintf("%v. %s - %s\n", count, value.Attributes.Artist, value.Attributes.Title)
 		list += str
@@ -101,8 +104,11 @@ func (srv *ShazamApiService) QuerySongByKeyWords(keyWord string) (string, error)
 	}
 
 	var list string
-	for i, value := range searchResponse.Tracks.Hits {
-		str := fmt.Sprintf("%v. %s - %s\n", i+1, value.Track.Subtitle, value.Track.Title)
+	for ind, value := range searchResponse.Tracks.Hits {
+		if ind > 9 {
+			break
+		}
+		str := fmt.Sprintf("%v. %s - %s\n", ind+1, value.Track.Subtitle, value.Track.Title)
 		list += str
 	}
 
@@ -120,7 +126,12 @@ func (srv *ShazamApiService) QuerySimilarSongsLinks(songName string) (string, er
 	listCh := make(chan string, chanCapacity)
 
 	var wg sync.WaitGroup
+	var ind int
 	for _, value := range similaritiesResponse.Resources.ShazamSongs {
+		if ind > 9 {
+			break
+		}
+		ind++
 		wg.Add(1)
 		go func() {
 			fullSongName := value.Attributes.Artist + " - " + value.Attributes.Title
@@ -156,7 +167,10 @@ func (srv *ShazamApiService) QuerySongByKeyWordsLinks(msg string) (string, error
 	listCh := make(chan string, chanCapacity)
 
 	var wg sync.WaitGroup
-	for _, value := range searchResponse.Tracks.Hits {
+	for ind, value := range searchResponse.Tracks.Hits {
+		if ind > 9 {
+			break
+		}
 		wg.Add(1)
 		go func() {
 			fullSongName := value.Track.Subtitle + " - " + value.Track.Title
@@ -188,7 +202,7 @@ func (srv *ShazamApiService) getListRow(song string) string {
 		link = "Ссылка не найдена."
 	}
 	songRow := fmt.Sprintf(`Название -  %s.
-	Ссылка на youtube - %v`, song, link)
+	Ссылка - %v`, song, link)
 	return songRow
 }
 

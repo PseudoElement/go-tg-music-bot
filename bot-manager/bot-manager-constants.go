@@ -14,6 +14,7 @@ const (
 	FIND_SONG_BY_KEYWORDS = "FIND_SONG_BY_KEYWORDS"
 	SEND_TEXT_LIST        = "SEND_TEXT_LIST"
 	SEND_LIST_WITH_LINKS  = "SEND_LIST_WITH_LINKS"
+	CONTACT_ADMIN         = "CONTACT_ADMIN"
 )
 
 const (
@@ -27,6 +28,9 @@ var (
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("Найти похожие песни"),
 			tgbotapi.NewKeyboardButton("Найти песню по ключевым словам"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("Связаться с администратором"),
 		),
 	)
 	LIST_TYPE_KEYBOARD = tgbotapi.NewReplyKeyboard(
@@ -43,6 +47,7 @@ var COMMANDS_RUS_TO_ENG = map[string]string{
 	"Найти песню по ключевым словам":         FIND_SONG_BY_KEYWORDS,
 	"Отправить обычный список":               SEND_TEXT_LIST,
 	"Отправить список с ссылками на YouTube": SEND_LIST_WITH_LINKS,
+	"Связаться с администратором":            CONTACT_ADMIN,
 }
 
 var COMMANDS_LIST = []string{
@@ -50,6 +55,7 @@ var COMMANDS_LIST = []string{
 	FIND_SONG_BY_KEYWORDS,
 	SEND_LIST_WITH_LINKS,
 	SEND_TEXT_LIST,
+	CONTACT_ADMIN,
 }
 
 var RESPONSE_MESSAGES_ON_COMMAND = map[string]string{
@@ -57,6 +63,7 @@ var RESPONSE_MESSAGES_ON_COMMAND = map[string]string{
 	FIND_SONG_BY_KEYWORDS: "Введи ключевые слова из песни(отрывок из текста, часть названия и т.д.)",
 	SEND_LIST_WITH_LINKS:  "Какой список тебе отправить?",
 	SEND_TEXT_LIST:        "Какой список тебе отправить?",
+	CONTACT_ADMIN:         "Telegram администратора: \n - https://t.me/BigChad",
 }
 
 var KEYBOARDS_ON_COMMAND = map[string]tgbotapi.ReplyKeyboardMarkup{
@@ -64,4 +71,5 @@ var KEYBOARDS_ON_COMMAND = map[string]tgbotapi.ReplyKeyboardMarkup{
 	FIND_SONG_BY_KEYWORDS: LIST_TYPE_KEYBOARD,
 	SEND_LIST_WITH_LINKS:  EMPTY_KEYBOARD,
 	SEND_TEXT_LIST:        EMPTY_KEYBOARD,
+	CONTACT_ADMIN:         MAIN_OPTIONS_KEYBOARD,
 }
