@@ -23,6 +23,12 @@ const (
 	STAGE_SONG_NAME_INPUT      = "STAGE_SONG_NAME_INPUT"
 )
 
+const (
+	MAIN_COMMAND              = "MAIN_COMMAND"
+	RESPONSE_LIST_VIEW        = "RESPONSE_LIST_VIEW"
+	COMMAND_REQUIRED_KEYBOARD = "COMMAND_REQUIRED_KEYBOARD"
+)
+
 var (
 	MAIN_OPTIONS_KEYBOARD = tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
@@ -33,14 +39,21 @@ var (
 			tgbotapi.NewKeyboardButton("Связаться с администратором"),
 		),
 	)
-	LIST_TYPE_KEYBOARD = tgbotapi.NewReplyKeyboard(
+	LIST_TYPE_KEYBOARD = tgbotapi.NewOneTimeReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("Отправить обычный список"),
 			tgbotapi.NewKeyboardButton("Отправить список с ссылками на YouTube"),
 		),
 	)
-	EMPTY_KEYBOARD = tgbotapi.NewReplyKeyboard()
 )
+
+var COMMAND_TYPES = map[string][]string{
+	FIND_SIMILAR_SONGS:    {MAIN_COMMAND, COMMAND_REQUIRED_KEYBOARD},
+	FIND_SONG_BY_KEYWORDS: {MAIN_COMMAND, COMMAND_REQUIRED_KEYBOARD},
+	CONTACT_ADMIN:         {MAIN_COMMAND, COMMAND_REQUIRED_KEYBOARD},
+	SEND_LIST_WITH_LINKS:  {RESPONSE_LIST_VIEW},
+	SEND_TEXT_LIST:        {RESPONSE_LIST_VIEW},
+}
 
 var COMMANDS_RUS_TO_ENG = map[string]string{
 	"Найти похожие песни":                    FIND_SIMILAR_SONGS,
@@ -58,7 +71,7 @@ var COMMANDS_LIST = []string{
 	CONTACT_ADMIN,
 }
 
-var RESPONSE_MESSAGES_ON_COMMAND = map[string]string{
+var RESPONSE_MESSAGES_FOR_COMMAND = map[string]string{
 	FIND_SIMILAR_SONGS:    "Введи название песни",
 	FIND_SONG_BY_KEYWORDS: "Введи ключевые слова из песни(отрывок из текста, часть названия и т.д.)",
 	SEND_LIST_WITH_LINKS:  "Какой список тебе отправить?",
@@ -66,10 +79,16 @@ var RESPONSE_MESSAGES_ON_COMMAND = map[string]string{
 	CONTACT_ADMIN:         "Telegram администратора: \n - https://t.me/BigChad",
 }
 
-var KEYBOARDS_ON_COMMAND = map[string]tgbotapi.ReplyKeyboardMarkup{
+var KEYBOARDS_FOR_MAIN_COMMAND = map[string]tgbotapi.ReplyKeyboardMarkup{
 	FIND_SIMILAR_SONGS:    LIST_TYPE_KEYBOARD,
 	FIND_SONG_BY_KEYWORDS: LIST_TYPE_KEYBOARD,
-	SEND_LIST_WITH_LINKS:  EMPTY_KEYBOARD,
-	SEND_TEXT_LIST:        EMPTY_KEYBOARD,
 	CONTACT_ADMIN:         MAIN_OPTIONS_KEYBOARD,
+}
+
+var NEW_STAGE_ON_COMMAND = map[string]string{
+	FIND_SIMILAR_SONGS:    STAGE_LIST_TYPE_SELECTION,
+	FIND_SONG_BY_KEYWORDS: STAGE_LIST_TYPE_SELECTION,
+	SEND_LIST_WITH_LINKS:  STAGE_SONG_NAME_INPUT,
+	SEND_TEXT_LIST:        STAGE_SONG_NAME_INPUT,
+	CONTACT_ADMIN:         STAGE_QUERY_TYPE_SELECTION,
 }
