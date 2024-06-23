@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/joho/godotenv"
-	bot_manager "github.com/pseudoelement/go-tg-music-bot/bot-manager"
+	bot_manager "github.com/pseudoelement/go-tg-music-bot/src/bot-manager"
 )
 
 func main() {

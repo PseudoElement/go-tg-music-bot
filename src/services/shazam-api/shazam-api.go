@@ -6,17 +6,17 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pseudoelement/go-tg-music-bot/api"
-	"github.com/pseudoelement/go-tg-music-bot/types"
-	"github.com/pseudoelement/go-tg-music-bot/utils"
-	youtube_api "github.com/pseudoelement/go-tg-music-bot/youtube-api"
+	"github.com/pseudoelement/go-tg-music-bot/src/common/api"
+	app_types "github.com/pseudoelement/go-tg-music-bot/src/common/types"
+	app_utils "github.com/pseudoelement/go-tg-music-bot/src/common/utils"
+	youtube_api "github.com/pseudoelement/go-tg-music-bot/src/services/youtube-api"
 )
 
 type ShazamApiService struct {
 	apiToken     string
 	apiHost      string
 	apiEndpoint  string
-	musicLinkSrv types.MusicLinkSearcher
+	musicLinkSrv app_types.MusicLinkSearcher
 }
 
 func NewShazamApiService() (*ShazamApiService, error) {
@@ -40,7 +40,7 @@ func (srv *ShazamApiService) querySongInfo(songName string) (SearchQueryResponse
 	url := srv.apiEndpoint + "/search"
 	searchResponse, err := api.Get[SearchQueryResponse](url, p, h)
 	if err != nil {
-		return SearchQueryResponse{}, utils.SimilarSongsNotFound()
+		return SearchQueryResponse{}, app_utils.SimilarSongsNotFound()
 	}
 
 	return searchResponse, nil
@@ -78,7 +78,7 @@ func (srv *ShazamApiService) QuerySimilarSongs(songName string, isRetry bool) (s
 	if err != nil {
 		return "", err
 	} else if len(similaritiesResponse.Resources.ShazamSongs) < 1 {
-		return "", utils.SimilarSongsNotFound()
+		return "", app_utils.SimilarSongsNotFound()
 	}
 
 	var list string
@@ -100,7 +100,7 @@ func (srv *ShazamApiService) QuerySongByKeyWords(keyWord string) (string, error)
 	if err != nil {
 		return "", err
 	} else if len(searchResponse.Tracks.Hits) < 1 {
-		return "", utils.SimilarSongsNotFound()
+		return "", app_utils.SimilarSongsNotFound()
 	}
 
 	var list string
@@ -120,7 +120,7 @@ func (srv *ShazamApiService) QuerySimilarSongsLinks(songName string) (string, er
 	if err != nil {
 		return "", err
 	} else if len(similaritiesResponse.Resources.ShazamSongs) < 1 {
-		return "", utils.SimilarSongsNotFound()
+		return "", app_utils.SimilarSongsNotFound()
 	}
 	chanCapacity := len(similaritiesResponse.Resources.ShazamSongs)
 	listCh := make(chan string, chanCapacity)
@@ -161,7 +161,7 @@ func (srv *ShazamApiService) QuerySongByKeyWordsLinks(msg string) (string, error
 	if err != nil {
 		return "", err
 	} else if len(searchResponse.Tracks.Hits) < 1 {
-		return "", utils.SimilarSongsNotFound()
+		return "", app_utils.SimilarSongsNotFound()
 	}
 	chanCapacity := len(searchResponse.Tracks.Hits)
 	listCh := make(chan string, chanCapacity)
@@ -206,4 +206,4 @@ func (srv *ShazamApiService) getListRow(song string) string {
 	return songRow
 }
 
-var _ types.MusicApiService = (*ShazamApiService)(nil)
+var _ app_types.MusicApiService = (*ShazamApiService)(nil)

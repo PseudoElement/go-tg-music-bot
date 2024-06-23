@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/pseudoelement/go-tg-music-bot/types"
-	"github.com/pseudoelement/go-tg-music-bot/utils"
+	app_types "github.com/pseudoelement/go-tg-music-bot/src/common/types"
+	app_utils "github.com/pseudoelement/go-tg-music-bot/src/common/utils"
 )
 
 type ChatGPT struct {
@@ -69,14 +69,14 @@ func (c *ChatGPT) getSongsListFromResponse(data map[string]interface{}) (string,
 	// Extract the content from the JSON response
 	content, ok := data["choices"].([]interface{})[0].(map[string]interface{})["message"].(map[string]interface{})["content"].(string)
 	if !ok {
-		return "", utils.Error("Can't parse content to string", "getSongsListFromResponse")
+		return "", app_utils.Error("Can't parse content to string", "getSongsListFromResponse")
 	}
 
-	listStartIndex := utils.IndexOfSubstring(content, "1.")
-	listEndIndex := utils.IndexOfSubstring(content, "!!!")
+	listStartIndex := app_utils.IndexOfSubstring(content, "1.")
+	listEndIndex := app_utils.IndexOfSubstring(content, "!!!")
 
 	if listStartIndex == -1 || listEndIndex == -1 {
-		return "", utils.Error("Invalid ChatGPT response type!", "getSongsListFromResponse")
+		return "", app_utils.Error("Invalid ChatGPT response type!", "getSongsListFromResponse")
 	}
 
 	list := content[listStartIndex:listEndIndex]
@@ -99,7 +99,7 @@ func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool) (string, error) {
 		Post(c.apiEndpoint)
 
 	if err != nil {
-		return "", utils.Error(err.Error(), "c.client.R")
+		return "", app_utils.Error(err.Error(), "c.client.R")
 	}
 
 	body := response.Body()
@@ -107,12 +107,12 @@ func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool) (string, error) {
 	var data map[string]interface{}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return "", utils.UnmarshalError(err.Error(), "MakeQuery")
+		return "", app_utils.UnmarshalError(err.Error(), "MakeQuery")
 	}
 
 	songsList, err := c.getSongsListFromResponse(data)
 	if err != nil {
-		if errors.Is(err, utils.InvalidAiResponseFormat()) && c.retryCount < 3 {
+		if errors.Is(err, app_utils.InvalidAiResponseFormat()) && c.retryCount < 3 {
 			newResponse, err := c.QuerySimilarSongs(msg, true)
 			if err != nil {
 				return "", err
@@ -130,15 +130,15 @@ func (c *ChatGPT) QuerySimilarSongs(msg string, isRetry bool) (string, error) {
 }
 
 func (srv *ChatGPT) QuerySongByKeyWords(msg string) (string, error) {
-	return "", utils.MethodNotImplemented()
+	return "", app_utils.MethodNotImplemented()
 }
 
 func (srv *ChatGPT) QuerySimilarSongsLinks(msg string) (string, error) {
-	return "", utils.MethodNotImplemented()
+	return "", app_utils.MethodNotImplemented()
 }
 
 func (srv *ChatGPT) QuerySongByKeyWordsLinks(msg string) (string, error) {
-	return "", utils.MethodNotImplemented()
+	return "", app_utils.MethodNotImplemented()
 }
 
-var _ types.MusicApiService = (*ChatGPT)(nil)
+var _ app_types.MusicApiService = (*ChatGPT)(nil)

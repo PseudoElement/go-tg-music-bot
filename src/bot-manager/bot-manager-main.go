@@ -7,10 +7,10 @@ import (
 	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/pseudoelement/go-tg-music-bot/ai"
-	shazam_api "github.com/pseudoelement/go-tg-music-bot/shazam-api"
-	"github.com/pseudoelement/go-tg-music-bot/types"
-	"github.com/pseudoelement/go-tg-music-bot/utils"
+	app_types "github.com/pseudoelement/go-tg-music-bot/src/common/types"
+	app_utils "github.com/pseudoelement/go-tg-music-bot/src/common/utils"
+	"github.com/pseudoelement/go-tg-music-bot/src/services/ai"
+	shazam_api "github.com/pseudoelement/go-tg-music-bot/src/services/shazam-api"
 )
 
 type BotManager struct {
@@ -18,7 +18,7 @@ type BotManager struct {
 	updates tgbotapi.UpdatesChannel
 	//SHAZAM_API_SERVICE or CHAT_GPT_SERVICE
 	activeMusicService string
-	musicApiServices   map[string]types.MusicApiService
+	musicApiServices   map[string]app_types.MusicApiService
 	clients            map[int64]*BotClient
 }
 
@@ -67,7 +67,7 @@ func (bm *BotManager) init() {
 		panic(err)
 	}
 
-	bm.musicApiServices = map[string]types.MusicApiService{
+	bm.musicApiServices = map[string]app_types.MusicApiService{
 		SHAZAM_API_SERVICE: shazamApi,
 		CHAT_GPT_SERVICE:   chatGPT,
 	}
@@ -129,7 +129,7 @@ func (bm *BotManager) Broadcast() {
 }
 
 func (bm *BotManager) isKeyboardCommand(text string) bool {
-	return utils.Includes(COMMANDS_LIST, COMMANDS_RUS_TO_ENG[text])
+	return app_utils.Includes(COMMANDS_LIST, COMMANDS_RUS_TO_ENG[text])
 }
 
 func (bm *BotManager) sendGreetingMessage(update tgbotapi.Update, userId int64) {
@@ -182,9 +182,9 @@ func (bm *BotManager) handleKeyboardCommand(update tgbotapi.Update) tgbotapi.Mes
 }
 
 func (bm *BotManager) getResponseMessage(update tgbotapi.Update, command string) tgbotapi.MessageConfig {
-	needKeyboard := utils.Includes(COMMAND_TYPES[command], COMMAND_REQUIRED_KEYBOARD)
-	needSetResponseListView := utils.Includes(COMMAND_TYPES[command], RESPONSE_LIST_VIEW)
-	isMainCommand := utils.Includes(COMMAND_TYPES[command], MAIN_COMMAND)
+	needKeyboard := app_utils.Includes(COMMAND_TYPES[command], COMMAND_REQUIRED_KEYBOARD)
+	needSetResponseListView := app_utils.Includes(COMMAND_TYPES[command], RESPONSE_LIST_VIEW)
+	isMainCommand := app_utils.Includes(COMMAND_TYPES[command], MAIN_COMMAND)
 
 	text := RESPONSE_MESSAGES_FOR_COMMAND[command]
 	bm.clients[update.Message.From.ID].Stage = NEW_STAGE_ON_COMMAND[command]
@@ -229,7 +229,7 @@ func (bm *BotManager) handleQuery(update tgbotapi.Update, user *BotClient) tgbot
 
 	if err != nil {
 		errorMsg := fmt.Sprintf("Произошла ошибка, попробуй еще раз! Текст ошибки(для разработчика): %s", err.Error())
-		if utils.IndexOfSubstring(err.Error(), utils.SimilarSongsNotFound().Error()) != -1 {
+		if app_utils.IndexOfSubstring(err.Error(), app_utils.SimilarSongsNotFound().Error()) != -1 {
 			errorMsg = err.Error()
 		}
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, errorMsg)

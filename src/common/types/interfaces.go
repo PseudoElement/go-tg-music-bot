@@ -1,4 +1,4 @@
-package types
+package app_types
 
 type MusiApiFields struct {
 	ApiToken string
