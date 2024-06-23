@@ -141,4 +141,6 @@ func (srv *ChatGPT) QuerySongByKeyWordsLinks(msg string) (string, error) {
 	return "", app_utils.MethodNotImplemented()
 }
 
+func (srv *ChatGPT) ChangeMusicLinkSearcher(musicLinkSearcher app_types.MusicLinkSearcher) {}
+
 var _ app_types.MusicApiService = (*ChatGPT)(nil)

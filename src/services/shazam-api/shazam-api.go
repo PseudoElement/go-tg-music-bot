@@ -9,21 +9,21 @@ import (
 	"github.com/pseudoelement/go-tg-music-bot/src/common/api"
 	app_types "github.com/pseudoelement/go-tg-music-bot/src/common/types"
 	app_utils "github.com/pseudoelement/go-tg-music-bot/src/common/utils"
-	youtube_api "github.com/pseudoelement/go-tg-music-bot/src/services/youtube-api"
+	spotify_api "github.com/pseudoelement/go-tg-music-bot/src/services/spotify-api"
 )
 
 type ShazamApiService struct {
-	apiToken     string
-	apiHost      string
-	apiEndpoint  string
-	musicLinkSrv app_types.MusicLinkSearcher
+	apiToken          string
+	apiHost           string
+	apiEndpoint       string
+	musicLinkSearcher app_types.MusicLinkSearcher
 }
 
 func NewShazamApiService() (*ShazamApiService, error) {
 	chat := &ShazamApiService{
-		apiEndpoint:  "https://shazam.p.rapidapi.com",
-		apiHost:      "shazam.p.rapidapi.com",
-		musicLinkSrv: youtube_api.NewYouTubeApi(),
+		apiEndpoint:       "https://shazam.p.rapidapi.com",
+		apiHost:           "shazam.p.rapidapi.com",
+		musicLinkSearcher: spotify_api.NewSpotifyApi(),
 	}
 	token, err := chat.GetApiToken()
 	if err != nil {
@@ -197,13 +197,17 @@ func (srv *ShazamApiService) QuerySongByKeyWordsLinks(msg string) (string, error
 }
 
 func (srv *ShazamApiService) getListRow(song string) string {
-	link, err := srv.musicLinkSrv.QueryLinkByVideoName(song)
+	link, err := srv.musicLinkSearcher.QueryLinkByVideoName(song)
 	if link == "" || err != nil {
 		link = "Ссылка не найдена."
 	}
 	songRow := fmt.Sprintf(`Название -  %s.
 	Ссылка - %v`, song, link)
 	return songRow
+}
+
+func (srv *ShazamApiService) ChangeMusicLinkSearcher(musicLinkSearcher app_types.MusicLinkSearcher) {
+	srv.musicLinkSearcher = musicLinkSearcher
 }
 
 var _ app_types.MusicApiService = (*ShazamApiService)(nil)

@@ -19,7 +19,7 @@ func NewYouTubeApi() *YouTubeApi {
 	srv := &YouTubeApi{}
 	token, err := srv.GetApiToken()
 	if err != nil {
-		panic("No YOUTUBE_API_KEY's provided!")
+		panic(err)
 	}
 	yts, _ := youtube.NewService(context.Background(), option.WithAPIKey(token))
 	srv.youtubeSrv = yts
@@ -27,7 +27,7 @@ func NewYouTubeApi() *YouTubeApi {
 	return srv
 }
 
-func (srv *YouTubeApi) GetApiToken() (string, error) {
+func (ya *YouTubeApi) GetApiToken() (string, error) {
 	token, ok := os.LookupEnv("YOUTUBE_API_KEY")
 	if !ok {
 		return "", errors.New("env variable YOUTUBE_API_KEY doesn't exist!")
@@ -36,8 +36,8 @@ func (srv *YouTubeApi) GetApiToken() (string, error) {
 	return token, nil
 }
 
-func (srv *YouTubeApi) QueryLinkByVideoName(videoName string) (string, error) {
-	call := srv.youtubeSrv.Search.List([]string{"snippet"})
+func (ya *YouTubeApi) QueryLinkByVideoName(videoName string) (string, error) {
+	call := ya.youtubeSrv.Search.List([]string{"snippet"})
 	searchList, err := call.MaxResults(5).Type("video").Q(videoName).Do()
 
 	if err != nil || len(searchList.Items) < 1 {

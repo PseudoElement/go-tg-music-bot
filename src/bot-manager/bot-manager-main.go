@@ -11,6 +11,8 @@ import (
 	app_utils "github.com/pseudoelement/go-tg-music-bot/src/common/utils"
 	"github.com/pseudoelement/go-tg-music-bot/src/services/ai"
 	shazam_api "github.com/pseudoelement/go-tg-music-bot/src/services/shazam-api"
+	spotify_api "github.com/pseudoelement/go-tg-music-bot/src/services/spotify-api"
+	youtube_api "github.com/pseudoelement/go-tg-music-bot/src/services/youtube-api"
 )
 
 type BotManager struct {
@@ -19,6 +21,7 @@ type BotManager struct {
 	//SHAZAM_API_SERVICE or CHAT_GPT_SERVICE
 	activeMusicService string
 	musicApiServices   map[string]app_types.MusicApiService
+	musicLinkSearchers map[string]app_types.MusicLinkSearcher
 	clients            map[int64]*BotClient
 }
 
@@ -40,6 +43,8 @@ func (bm *BotManager) init() {
 
 	useChatGPT := bm.needUseChatGPT()
 	bm.selectMusicService(useChatGPT)
+	bm.setupMusicApiServices()
+	bm.setupMusicLinkSearchers()
 
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -54,12 +59,13 @@ func (bm *BotManager) init() {
 	u.Timeout = 100
 	bm.updates = bot.GetUpdatesChan(u)
 
-	var chatGPT *ai.ChatGPT
-	if useChatGPT {
-		chatGPT, err = ai.NewChatGPTService()
-		if err != nil {
-			panic(err)
-		}
+	bm.clients = make(map[int64]*BotClient)
+}
+
+func (bm *BotManager) setupMusicApiServices() {
+	chatGPT, err := ai.NewChatGPTService()
+	if err != nil {
+		panic(err)
 	}
 
 	shazamApi, err := shazam_api.NewShazamApiService()
@@ -71,7 +77,16 @@ func (bm *BotManager) init() {
 		SHAZAM_API_SERVICE: shazamApi,
 		CHAT_GPT_SERVICE:   chatGPT,
 	}
-	bm.clients = make(map[int64]*BotClient)
+}
+
+func (bm *BotManager) setupMusicLinkSearchers() {
+	spotifyApi := spotify_api.NewSpotifyApi()
+	youtubeApi := youtube_api.NewYouTubeApi()
+
+	bm.musicLinkSearchers = map[string]app_types.MusicLinkSearcher{
+		YOUTUBE_LINK_SEARCHER: youtubeApi,
+		SPOTIFY_LINK_SEARCHER: spotifyApi,
+	}
 }
 
 func (bm *BotManager) needUseChatGPT() bool {
@@ -152,7 +167,7 @@ func (bm *BotManager) handleClientsConfig(userId int64, userName string) {
 			MainCommandSelected: FIND_SIMILAR_SONGS,
 			ResponseViewType:    SEND_TEXT_LIST,
 			UserName:            userName,
-			Stage:               STAGE_QUERY_TYPE_SELECTION,
+			Stage:               STAGE_MAIN_COMMAND_SELECTION,
 		}
 	}
 }
