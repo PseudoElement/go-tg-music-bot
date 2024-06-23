@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"log"
@@ -43,4 +44,32 @@ func Get[T any](url string, params map[string]string, headers map[string]string)
 	defer res.Body.Close()
 
 	return *res_struct, nil
+}
+
+func Post[T any](url string, body interface{}, headers map[string]string) (T, error) {
+	client := &http.Client{}
+
+	var bodyBuffer bytes.Buffer
+	err := json.NewEncoder(&bodyBuffer).Encode(body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req, _ := http.NewRequest(http.MethodPost, url, &bodyBuffer)
+
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	resp, err := client.Do(req)
+	bytes, err := io.ReadAll(resp.Body)
+
+	var response T
+	if err := json.Unmarshal(bytes, &response); err != nil {
+		return response, err
+	}
+
+	defer resp.Body.Close()
+	return response, nil
 }

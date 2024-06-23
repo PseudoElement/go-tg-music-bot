@@ -11,3 +11,7 @@ type MusicApiService interface {
 	QuerySongByKeyWords(msg string) (string, error)
 	QuerySongByKeyWordsLinks(msg string) (string, error)
 }
+
+type MusicLinkSearcher interface {
+	QueryLinkByVideoName(videoName string) (string, error)
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pseudoelement/go-tg-music-bot/types"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -48,3 +49,5 @@ func (srv *YouTubeApi) QueryLinkByVideoName(videoName string) (string, error) {
 
 	return videoUrl, nil
 }
+
+var _ types.MusicLinkSearcher = (*YouTubeApi)(nil)

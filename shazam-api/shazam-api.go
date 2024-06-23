@@ -13,17 +13,17 @@ import (
 )
 
 type ShazamApiService struct {
-	apiToken    string
-	apiHost     string
-	apiEndpoint string
-	youTubeApi  *youtube_api.YouTubeApi
+	apiToken     string
+	apiHost      string
+	apiEndpoint  string
+	musicLinkSrv types.MusicLinkSearcher
 }
 
 func NewShazamApiService() (*ShazamApiService, error) {
 	chat := &ShazamApiService{
-		apiEndpoint: "https://shazam.p.rapidapi.com",
-		apiHost:     "shazam.p.rapidapi.com",
-		youTubeApi:  youtube_api.NewYouTubeApi(),
+		apiEndpoint:  "https://shazam.p.rapidapi.com",
+		apiHost:      "shazam.p.rapidapi.com",
+		musicLinkSrv: youtube_api.NewYouTubeApi(),
 	}
 	token, err := chat.GetApiToken()
 	if err != nil {
@@ -197,7 +197,7 @@ func (srv *ShazamApiService) QuerySongByKeyWordsLinks(msg string) (string, error
 }
 
 func (srv *ShazamApiService) getListRow(song string) string {
-	link, err := srv.youTubeApi.QueryLinkByVideoName(song)
+	link, err := srv.musicLinkSrv.QueryLinkByVideoName(song)
 	if link == "" || err != nil {
 		link = "Ссылка не найдена."
 	}
