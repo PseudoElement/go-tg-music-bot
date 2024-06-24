@@ -66,7 +66,7 @@ func (sa *SpotifyApi) fetchTokenInfo() (TokenResponse, error) {
 }
 
 func (sa *SpotifyApi) QueryLinkByVideoName(videoName string) (string, error) {
-	return "string", nil
+	return "QueryLinkByVideoName by Spotify", nil
 }
 
 var _ app_types.MusicLinkSearcher = (*SpotifyApi)(nil)

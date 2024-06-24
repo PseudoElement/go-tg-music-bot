@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	app_types "github.com/pseudoelement/go-tg-music-bot/src/common/types"
@@ -147,6 +148,13 @@ func (bm *BotManager) isKeyboardCommand(text string) bool {
 	return app_utils.Includes(COMMANDS_LIST, COMMANDS_RUS_TO_ENG[text])
 }
 
+func (bm *BotManager) isAdmin(update tgbotapi.Update) bool {
+	adminsStr := os.Getenv("APP_ADMINS")
+	admins := strings.Split(adminsStr, "___")
+	isAdmin := app_utils.Includes(admins, update.Message.From.UserName)
+	return isAdmin
+}
+
 func (bm *BotManager) sendGreetingMessage(update tgbotapi.Update, userId int64) {
 	userName := bm.clients[userId].UserName
 	text := fmt.Sprintf(`
@@ -185,7 +193,19 @@ func (bm *BotManager) handleKeyboardCommand(update tgbotapi.Update) tgbotapi.Mes
 	case FIND_SONG_BY_KEYWORDS:
 		msg = bm.getResponseMessage(update, FIND_SONG_BY_KEYWORDS)
 	case SEND_LIST_WITH_LINKS:
-		msg = bm.getResponseMessage(update, SEND_LIST_WITH_LINKS)
+		if bm.isAdmin(update) {
+			msg = bm.getResponseMessage(update, SEND_LIST_WITH_LINKS_EXTENDED)
+		} else {
+			msg = bm.getResponseMessage(update, SEND_LIST_WITH_LINKS)
+		}
+	case SEND_SPOTIFY_LINKS:
+		spotifySearcher := bm.musicLinkSearchers[SPOTIFY_LINK_SEARCHER]
+		bm.musicApiServices[bm.activeMusicService].ChangeMusicLinkSearcher(spotifySearcher)
+		msg = bm.getResponseMessage(update, SEND_SPOTIFY_LINKS)
+	case SEND_YOUTUBE_LINKS:
+		youtubeSearcher := bm.musicLinkSearchers[YOUTUBE_LINK_SEARCHER]
+		bm.musicApiServices[bm.activeMusicService].ChangeMusicLinkSearcher(youtubeSearcher)
+		msg = bm.getResponseMessage(update, SEND_YOUTUBE_LINKS)
 	case SEND_TEXT_LIST:
 		msg = bm.getResponseMessage(update, SEND_TEXT_LIST)
 	case CONTACT_ADMIN:
@@ -202,20 +222,20 @@ func (bm *BotManager) getResponseMessage(update tgbotapi.Update, command string)
 	isMainCommand := app_utils.Includes(COMMAND_TYPES[command], MAIN_COMMAND)
 
 	text := RESPONSE_MESSAGES_FOR_COMMAND[command]
-	bm.clients[update.Message.From.ID].Stage = NEW_STAGE_ON_COMMAND[command]
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
 
 	if isMainCommand {
 		bm.clients[update.Message.From.ID].MainCommandSelected = command
 	}
 	if needKeyboard {
-		mainCommandSelected := bm.clients[update.Message.From.ID].MainCommandSelected
-		keyboard := KEYBOARDS_FOR_MAIN_COMMAND[mainCommandSelected]
+		keyboard := KEYBOARDS_FOR_COMMANDS[command]
 		msg.ReplyMarkup = keyboard
 	}
 	if needSetResponseListView {
 		bm.clients[update.Message.From.ID].ResponseViewType = command
 	}
+
+	bm.clients[update.Message.From.ID].Stage = NEW_STAGE_AFTER_COMMAND[command]
 
 	return msg
 }
@@ -228,7 +248,7 @@ func (bm *BotManager) handleQuery(update tgbotapi.Update, user *BotClient) tgbot
 		switch user.ResponseViewType {
 		case SEND_TEXT_LIST:
 			response, err = bm.musicApiServices[bm.activeMusicService].QuerySimilarSongs(update.Message.Text, false)
-		case SEND_LIST_WITH_LINKS:
+		case SEND_LIST_WITH_LINKS, SEND_LIST_WITH_LINKS_EXTENDED:
 			response, err = bm.musicApiServices[bm.activeMusicService].QuerySimilarSongsLinks(update.Message.Text)
 		}
 		response = "Вот подборка похожих песен: \n" + response
@@ -236,7 +256,7 @@ func (bm *BotManager) handleQuery(update tgbotapi.Update, user *BotClient) tgbot
 		switch user.ResponseViewType {
 		case SEND_TEXT_LIST:
 			response, err = bm.musicApiServices[bm.activeMusicService].QuerySongByKeyWords(update.Message.Text)
-		case SEND_LIST_WITH_LINKS:
+		case SEND_LIST_WITH_LINKS, SEND_LIST_WITH_LINKS_EXTENDED:
 			response, err = bm.musicApiServices[bm.activeMusicService].QuerySongByKeyWordsLinks(update.Message.Text)
 		}
 		response = "Наиболее вероятные совпадения по запросу: \n" + response
@@ -252,6 +272,7 @@ func (bm *BotManager) handleQuery(update tgbotapi.Update, user *BotClient) tgbot
 		msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
 	}
 
+	bm.clients[update.Message.From.ID].Stage = STAGE_MAIN_COMMAND_SELECTION
 	msg.ReplyMarkup = MAIN_OPTIONS_KEYBOARD
 	return msg
 }
