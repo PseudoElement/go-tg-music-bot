@@ -125,12 +125,10 @@ func (bm *BotManager) Broadcast() {
 		isNewUser := bm.clients[userId].IsFirstLoad
 		isCommandRequired := bm.clients[userId].Stage != STAGE_SONG_NAME_INPUT
 		if update.Message != nil {
-			if isNewUser {
-				bm.sendGreetingMessage(update, userId)
-				continue
-			}
 			var msg tgbotapi.MessageConfig
-			if bm.isKeyboardCommand(update.Message.Text) {
+			if isNewUser {
+				msg = bm.sendGreetingMessage(update, userId)
+			} else if bm.isKeyboardCommand(update.Message.Text) {
 				msg = bm.handleKeyboardCommand(update)
 			} else if isCommandRequired {
 				msg = bm.handleCommandRequiredWarning(update)
@@ -155,7 +153,7 @@ func (bm *BotManager) isAdmin(update tgbotapi.Update) bool {
 	return isAdmin
 }
 
-func (bm *BotManager) sendGreetingMessage(update tgbotapi.Update, userId int64) {
+func (bm *BotManager) sendGreetingMessage(update tgbotapi.Update, userId int64) tgbotapi.MessageConfig {
 	userName := bm.clients[userId].UserName
 	text := fmt.Sprintf(`
         Привет, %s. Выбирай интересующую тебя опцию внизу в меню. Я попробую помочь с твоим запросом!
@@ -164,7 +162,8 @@ func (bm *BotManager) sendGreetingMessage(update tgbotapi.Update, userId int64) 
 	bm.clients[userId].IsFirstLoad = false
 	msg.ReplyToMessageID = update.Message.MessageID
 	msg.ReplyMarkup = MAIN_OPTIONS_KEYBOARD
-	bm.Bot().Send(msg)
+
+	return msg
 }
 
 func (bm *BotManager) handleClientsConfig(userId int64, userName string) {
@@ -192,6 +191,8 @@ func (bm *BotManager) handleKeyboardCommand(update tgbotapi.Update) tgbotapi.Mes
 		msg = bm.getResponseMessage(update, FIND_SIMILAR_SONGS)
 	case FIND_SONG_BY_KEYWORDS:
 		msg = bm.getResponseMessage(update, FIND_SONG_BY_KEYWORDS)
+	case SEND_TEXT_LIST:
+		msg = bm.getResponseMessage(update, SEND_TEXT_LIST)
 	case SEND_LIST_WITH_LINKS:
 		if bm.isAdmin(update) {
 			msg = bm.getResponseMessage(update, SEND_LIST_WITH_LINKS_EXTENDED)
@@ -206,8 +207,6 @@ func (bm *BotManager) handleKeyboardCommand(update tgbotapi.Update) tgbotapi.Mes
 		youtubeSearcher := bm.musicLinkSearchers[YOUTUBE_LINK_SEARCHER]
 		bm.musicApiServices[bm.activeMusicService].ChangeMusicLinkSearcher(youtubeSearcher)
 		msg = bm.getResponseMessage(update, SEND_YOUTUBE_LINKS)
-	case SEND_TEXT_LIST:
-		msg = bm.getResponseMessage(update, SEND_TEXT_LIST)
 	case CONTACT_ADMIN:
 		msg = bm.getResponseMessage(update, CONTACT_ADMIN)
 	default:

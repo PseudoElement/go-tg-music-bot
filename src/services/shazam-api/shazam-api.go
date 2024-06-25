@@ -17,6 +17,7 @@ type ShazamApiService struct {
 	apiHost           string
 	apiEndpoint       string
 	musicLinkSearcher app_types.MusicLinkSearcher
+	mu                sync.Mutex
 }
 
 func NewShazamApiService() (*ShazamApiService, error) {
@@ -135,7 +136,9 @@ func (srv *ShazamApiService) QuerySimilarSongsLinks(songName string) (string, er
 		wg.Add(1)
 		go func() {
 			fullSongName := value.Attributes.Artist + " - " + value.Attributes.Title
+			srv.mu.Lock()
 			songRow := srv.getListRow(fullSongName)
+			srv.mu.Unlock()
 			listCh <- songRow
 			defer wg.Done()
 		}()
@@ -174,7 +177,9 @@ func (srv *ShazamApiService) QuerySongByKeyWordsLinks(msg string) (string, error
 		wg.Add(1)
 		go func() {
 			fullSongName := value.Track.Subtitle + " - " + value.Track.Title
+			srv.mu.Lock()
 			songRow := srv.getListRow(fullSongName)
+			srv.mu.Unlock()
 			listCh <- songRow
 			defer wg.Done()
 		}()
